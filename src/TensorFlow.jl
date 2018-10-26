@@ -136,6 +136,11 @@ function deallocator(data, len, arg)
 end
 
 function __init__()
+    # Allow XLA tools to find things like libcublas.so.10
+    dllib_dir = joinpath(dirname(dirname(pathof(@__MODULE__))),"deps","downloads","lib")
+    if isdir(dllib_dir) && isdir("$(dllib_dir)64")
+        ENV["LD_LIBRARY_PATH"] = get(ENV, "LD_LIBRARY_PATH", "") * ":$(dllib_dir):$(dllib_dir)64"
+    end
     c_deallocator[] = @cfunction(deallocator, Cvoid, (Ptr{Cvoid}, Csize_t, Ptr{Cvoid}))
 end
 

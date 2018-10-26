@@ -91,12 +91,20 @@ end
 end
 
 @static if Sys.islinux()
-    if use_gpu
-        url = "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-gpu-linux-x86_64-$cur_version.tar.gz"
-    else
-        url = "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-$cur_version.tar.gz"
-    end
+    url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.10.25/XRTServer.v2018.10.25.x86_64-linux-gnu.tar.gz"
     download_and_unpack(url)
-    mv("$lib_dir/libtensorflow.so", "usr/bin/libtensorflow.so", force=true)
-    mv("$lib_dir/libtensorflow_framework.so", "usr/bin/libtensorflow_framework.so", force=true)
+    rm("usr/bin/libtensorflow.so"; force=true)
+    symlink("../../downloads/lib/libtensorflow.so", "usr/bin/libtensorflow.so")
+    rm("usr/bin/libtensorflow_framework.so"; force=true)
+    symlink("../../downloads/lib/libtensorflow_framework.so", "usr/bin/libtensorflow_framework.so")
+    rm("downloads/bin/cuda_sdk_lib"; force=true)
+    symlink("../nvvm/libdevice", "downloads/bin/cuda_sdk_lib")
+
+    # If the user actually wants to use the GPU, we need to move `libcuda.so.1` to a different name
+    # so that libtensorflow links against the system-wide libcuda
+    if use_gpu && isfile("downloads/lib64/libcuda.so.1")
+        mv("downloads/lib64/libcuda.so.1", "downloads/lib64/libcuda.so.1.use_gpu")
+    elseif !use_gpu && isfile("downloads/lib64/libcuda.so.1.use_gpu")
+        mv("downloads/lib64/libcuda.so.1.use_gpu", "downloads/lib64/libcuda.so.1")
+    end
 end
