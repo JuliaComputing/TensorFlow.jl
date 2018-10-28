@@ -17,7 +17,7 @@ macro tfcall(sym, ret, args, vals...)
     quote
         tf_path = get(ENV,
             "LIBTENSORFLOW",
-            joinpath(LIB_BASE, "usr", "bin", "libtensorflow"))
+            joinpath(LIB_BASE, "usr", "lib", "libtensorflow"))
         if LIBTF_PTR[] == C_NULL
             LIBTF_PTR[] = Libdl.dlopen(expanduser(tf_path))
         end
