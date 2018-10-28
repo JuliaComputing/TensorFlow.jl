@@ -65,16 +65,13 @@ end
 
 base = dirname(@__FILE__)
 download_dir = joinpath(base, "downloads")
-lib_dir = joinpath(download_dir, "lib")
-bin_dir = joinpath(base, "usr/bin")
+dl_lib_dir = joinpath(download_dir, "lib")
+usr_lib_dir = joinpath(base, "usr", "lib")
 
-mkpath(download_dir)
-mkpath(lib_dir)
-mkpath(bin_dir)
-
+mkpath(dl_lib_dir)
 
 function download_and_unpack(url)
-    tensorflow_zip_path = joinpath(base, "downloads/tensorflow.tar.gz")
+    tensorflow_zip_path = joinpath(base, "downloads", "tensorflow.tar.gz")
     download(url, tensorflow_zip_path)
     run(`tar -xzf $tensorflow_zip_path -C downloads`)
 end
@@ -86,25 +83,24 @@ end
         url = "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-darwin-x86_64-$cur_version.tar.gz"
     end
     download_and_unpack(url)
-    mv("$lib_dir/libtensorflow.so", "usr/bin/libtensorflow.dylib", force=true)
-    mv("$lib_dir/libtensorflow_framework.so", "usr/bin/libtensorflow_framework.so", force=true)
+    mkpath(joinpath(base, "usr", "lib"))
+    mv(joinpath(dl_lib_dir, "libtensorflow.so"), joinpath(usr_lib_dir, "libtensorflow.dylib"), force=true)
+    mv(joinpath(dl_lib_dir, "libtensorflow_framework.so"), joinpath(usr_lib_dir, "libtensorflow_framework.so"), force=true)
 end
 
 @static if Sys.islinux()
     url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.10.25/XRTServer.v2018.10.25.x86_64-linux-gnu.tar.gz"
     download_and_unpack(url)
-    rm("usr/bin/libtensorflow.so"; force=true)
-    symlink("../../downloads/lib/libtensorflow.so", "usr/bin/libtensorflow.so")
-    rm("usr/bin/libtensorflow_framework.so"; force=true)
-    symlink("../../downloads/lib/libtensorflow_framework.so", "usr/bin/libtensorflow_framework.so")
-    rm("downloads/bin/cuda_sdk_lib"; force=true)
-    symlink("../nvvm/libdevice", "downloads/bin/cuda_sdk_lib")
+    rm(usr_lib_dir; force=true, recursive=true)
+    mkpath(dirname(usr_lib_dir))
+    symlink(dl_lib_dir, usr_lib_dir)
 
     # If the user actually wants to use the GPU, we need to move `libcuda.so.1` to a different name
     # so that libtensorflow links against the system-wide libcuda
-    if use_gpu && isfile("downloads/lib64/libcuda.so.1")
-        mv("downloads/lib64/libcuda.so.1", "downloads/lib64/libcuda.so.1.use_gpu")
-    elseif !use_gpu && isfile("downloads/lib64/libcuda.so.1.use_gpu")
-        mv("downloads/lib64/libcuda.so.1.use_gpu", "downloads/lib64/libcuda.so.1")
+    libcuda = joinpath(base, "downloads", "lib64", "libcuda.so.1")
+    if use_gpu && isfile(libcuda)
+        mv(libcuda, "$(libcuda).use_gpu")
+    elseif !use_gpu && isfile("$(libcuda).use_gpu")
+        mv("$(libcuda).use_gpu", libcuda)
     end
 end
