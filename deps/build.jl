@@ -89,8 +89,13 @@ end
 end
 
 @static if Sys.islinux()
-    url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.10.25/XRTServer.v2018.10.25.x86_64-linux-gnu.tar.gz"
+    if use_gpu
+        url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.10.25/XRTServer.v2018.10.25.x86_64-linux-gnu.tar.gz"
+    else
+        url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer_lite-v2018.11.1/XRTServer_lite.v2018.11.1.x86_64-linux-gnu.tar.gz"
+    end
     download_and_unpack(url)
+
     rm(usr_lib_dir; force=true, recursive=true)
     mkpath(dirname(usr_lib_dir))
     symlink(dl_lib_dir, usr_lib_dir)
