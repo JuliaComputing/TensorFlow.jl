@@ -30,35 +30,6 @@ else
     @info("Building TensorFlow.jl for CPU use only. To enable the GPU, set the TF_USE_GPU environment variable to 1 and rebuild TensorFlow.jl")
 end
 
-
-
-#############################
-# Install Python TensorFlow
-#############################
-
-if PyCall.conda
-    Conda.add_channel("conda-forge")
-    Conda.add("tensorflow=" * cur_py_version)
-else
-    try
-        pyimport("tensorflow")
-        # See if it works already
-    catch ee
-        typeof(ee) <: PyCall.PyError || rethrow(ee)
-        error("""
-Python TensorFlow not installed
-Please either:
- - Rebuild PyCall to use Conda, by running in the julia REPL:
-    - `ENV["PYTHON"]=""; Pkg.build("PyCall"); Pkg.build("TensorFlow")`
- - Or install the python binding yourself, eg by running pip
-    - `pip install tensorflow`
-    - then rebuilding TensorFlow.jl via `Pkg.build("TensorFlow")` in the julia REPL
-    - make sure you run the right pip, for the instance of python that PyCall is looking at.
-""")
-    end
-end
-
-
 ############################
 # Install libtensorflow
 ############################
