@@ -84,7 +84,8 @@ function Base.show(io::IO, err::ClosedSessionError)
     print(io, "An operation was attempted on a closed TensorFlow session.")
 end
 
-function run(sess::Session, inputs, input_values, outputs, targets)
+const run_func = Ref{Ptr{Cvoid}}(C_NULL)
+@eval function run(sess::Session, inputs, input_values, outputs, targets; async = false)
     #Low level run, without size checking, and type conversion etc.
     if sess.ptr == C_NULL
         throw(ClosedSessionError())
@@ -92,20 +93,42 @@ function run(sess::Session, inputs, input_values, outputs, targets)
     status = Status()
     output_values = fill(C_NULL, length(outputs))
     input_tensors = [RawTensor(x) for x in input_values]
-    @tfcall(:TF_SessionRun, Cvoid,
-    (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Cint, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}, Cint, Ptr{Cvoid}, Cint, Ptr{Cvoid}, Ptr{Cvoid}),
-        sess.ptr,
-        C_NULL,
-        inputs,
-        [x.ptr for x in input_tensors],
-        length(input_tensors),
-        outputs,
-        output_values,
-        length(output_values),
-        targets,
-        length(targets),
-        C_NULL,
-        status.ptr)
+    if async
+        if run_func[] == C_NULL
+            run_func[] = Libdl.dlsym(tf.LIBTF_PTR[], :TF_SessionRun)
+        end
+        @threadcall($(run_func)[], Cvoid,
+            (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid},
+             Cint, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}, Cint, Ptr{Cvoid},
+             Cint, Ptr{Cvoid}, Ptr{Cvoid}),
+            sess.ptr,
+            C_NULL,
+            inputs,
+            [x.ptr for x in input_tensors],
+            length(input_tensors),
+            outputs,
+            output_values,
+            length(output_values),
+            targets,
+            length(targets),
+            C_NULL,
+            status.ptr)
+    else
+        @tfcall(:TF_SessionRun, Cvoid,
+        (Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Ptr{Cvoid}, Cint, Ptr{Cvoid}, Ptr{Ptr{Cvoid}}, Cint, Ptr{Cvoid}, Cint, Ptr{Cvoid}, Ptr{Cvoid}),
+            sess.ptr,
+            C_NULL,
+            inputs,
+            [x.ptr for x in input_tensors],
+            length(input_tensors),
+            outputs,
+            output_values,
+            length(output_values),
+            targets,
+            length(targets),
+            C_NULL,
+            status.ptr)
+    end
     check_status(status)
 
     map(output_values) do x
@@ -183,7 +206,7 @@ function check_shape(tensor, value)
 end
 
 
-function run(sess::Session, outputs::AbstractVector, input_dict)
+function run(sess::Session, outputs::AbstractVector, input_dict; kwargs...)
     output_map = Dict{Tensor, Tuple{Symbol, Int}}()
     output_ports = Port[]
     target_ptrs= Ptr{Cvoid}[]
@@ -207,7 +230,7 @@ function run(sess::Session, outputs::AbstractVector, input_dict)
 
     end
     input_ports = [Port(tensor) for tensor in input_tensors]
-    unique_output_values = run(sess, input_ports, input_values, output_ports, target_ptrs)
+    unique_output_values = run(sess, input_ports, input_values, output_ports, target_ptrs; kwargs...)
     output_values = []
     for tensor in get_tensors(outputs)
         location = output_map[tensor]
@@ -227,8 +250,8 @@ end
 
 Compute the result of one of more operations in the computation graph.
 """
-function run(sess::Session, output, input_dict)
-    res = run(sess, [output], input_dict)
+function run(sess::Session, output, input_dict; kwargs...)
+    res = run(sess, [output], input_dict; kwargs...)
     if length(res)==1
         return res[1]
     else
@@ -236,8 +259,8 @@ function run(sess::Session, output, input_dict)
     end
 end
 
-run(sess::Session, outputs) = run(sess, outputs, Dict())
+run(sess::Session, outputs; kwargs...) = run(sess, outputs, Dict(); kwargs...)
 
 # Add ability to 'run' a numeric literal (for testing, generally)
-run(sess::Session, output::Number) = run(sess, Tensor(output))
-run(sess::Session, output::Array{<:Number}) = run(sess, Tensor(output))
+run(sess::Session, output::Number; kwargs...) = run(sess, Tensor(output); kwargs...)
+run(sess::Session, output::Array{<:Number}; kwargs...) = run(sess, Tensor(output); kwargs...)
