@@ -61,7 +61,7 @@ end
 
 @static if Sys.islinux()
     if use_gpu
-        url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.10.25/XRTServer.v2018.10.25.x86_64-linux-gnu.tar.gz"
+        url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer-v2018.11.12/XRTServer.v2018.11.12.x86_64-linux-gnu.tar.gz"
     else
         url = "https://github.com/JuliaPackaging/Yggdrasil/releases/download/XRTServer_lite-v2018.11.1/XRTServer_lite.v2018.11.1.x86_64-linux-gnu.tar.gz"
     end
